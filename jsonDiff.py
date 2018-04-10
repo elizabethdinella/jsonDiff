@@ -6,11 +6,7 @@ grayCount1 = 0
 grayCount2 = 0
 
 '''
-change this equality map to allow for more than two languages 
-and allow structure
-ideas for allowing structure: 
-- just pass the parent tag as well as the current tag when checking for equality
-- create a function for checking equality. Don't just check tags. Pass in a node and we can check for any structural things as long as we have a pointer back to the parent.
+TODO: change this equality map to allow for more than two languages 
 
 - we have tag equality and structural equality. structural equality means that we mark just the node but not the whole subtree. In the structural equality map we have tuples. If (parent, child) is in the map, and the parents are equal than mark the node.
 
@@ -18,12 +14,17 @@ ideas for allowing structure:
 '''
 
 
-tagEqualityMap = dict({"ClassDef": "class", "FunctionDef": "function"})
+#Context independent equality - (Tag1 always == Tag2 and Tag2 always == Tag1 regardless of context)
+tagEqualityMap = dict({"ClassDef": "class", "FunctionDef": "function", "CompoundStmt": "body"})
 
-#parent->child
+#context dependent equality - (Tag1 always == Tag2 in the context A)
+
+#Context dependent - if this parent->child sub-tree is found, skip the child node. It is an extra node in one of the trees
 structEqlMap = dict({"class":"body"})
 
-
+'''
+Given a node, mark it and all of its children recursivley, until we reach the leaves
+'''
 def markSubtree(node, isFirst):
 	markNode(node, isFirst)
 
@@ -33,6 +34,9 @@ def markSubtree(node, isFirst):
 	for child in node["children"]:
 		markSubtree(child, isFirst)
 
+'''
+Mark a single node
+'''
 def markNode(node, isFirst):
 	if not hasTags(node):
 		node["tags"] = []
@@ -43,35 +47,43 @@ def markNode(node, isFirst):
 		node["tags"].append("#ffff00")
 
 
-def inStructEqlMap(key, value):
-	if not hasTags(key) or not hasTags(value): return False
+'''
+Given a node and its parent, see if it exists in the structEql map
+'''
+def inStructEqlMap(parent, node):
+	if not hasTags(parent) or not hasTags(node): return False
 	
-	for tag in key["tags"]:
-		for tag_ in value["tags"]:
+	for tag in parent["tags"]:
+		for tag_ in node["tags"]:
 			if tag in structEqlMap and structEqlMap[tag] == tag_:
 				return True
 
 	return False
 
 
-def structuralEquality(node, node2):
+#def structuralEquality(node):''', node2'''
+def structuralEquality(node):
 
-	if not "parent" in node or not "parent" in node2:
+
+	#if not "parent" in node: '''or not "parent" in node2'''
+	if not "parent" in node:
 		return False
 
 	#for the print 
-	if not "tags" in node or not "tags" in node2:
+	#if not "tags" in node: '''or not "tags" in node2'''
+	if not "tags" in node: 
 		return False
 
 	node1Str = False
 	node2Str = False
 	if inStructEqlMap(node["parent"], node):
 		node1Str = True
-	elif inStructEqlMap(node2["parent"], node2):
-		node2Str = True
+		#elif inStructEqlMap(node2["parent"], node2):
+		#node2Str = True'
 	else:
 		return False
 
+	'''
 	if tagsMatch(node["parent"], node2["parent"]):
 		if node1Str: node["matched"] = True
 		else: node2["matched"] = True
@@ -79,6 +91,9 @@ def structuralEquality(node, node2):
 		return True
 
 	return False	
+	'''
+
+	return True
 
 
 def equalTags(tag, tag_):
@@ -122,10 +137,17 @@ def delAddedTags(node):
 	for child in node["children"]:
 		delAddedTags(child)
 
+'''Main recursive function - Three recursions occur:
+(1) Recurses down the tree to find nodes with context independent tag matching
+(2) On the way back up from (1), looks for structural equality. 
+	-> If found, recurse down again on that node
+(3) Recurse from the root down to the leaves deleting all of the added tags (Matched and Parent)
+'''
 def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 	global grayCount1
 	global grayCount2
 
+	#add the matched and parent tags
 	for node in t1Nodes:
 		node["matched"] = False
 		node["parent"] = parent1
@@ -134,7 +156,10 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 		node["parent"] = parent2
 
 
-	#Find a matching node from tree2 for each node tree1
+	'''
+	First recursion - Find a match in tree2 for each node in tree1
+
+	'''
 	for node in t1Nodes:	
 		for node2 in t2Nodes:
 			if((hasTags(node) and hasTags(node2) and tagsMatch(node["tags"], node2["tags"]) and not node2["matched"]) or 
@@ -143,9 +168,33 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 				node["matched"] = True
 				node2["matched"] = True
 
+				#If there is a match, we recurse on the children
 				if "children" in node and "children" in node2:
 					checkChildren(node["children"], node2["children"], node, node2)
 				break
+
+	'''
+	Second recurion - On the way up, check for structural equality 
+			(a node level that exists in one tree but not the other)
+
+	'''
+
+	for node in t1Nodes:
+		strEql = False
+		if not node["matched"]:
+			strEql = False
+			if structuralEquality(node):
+				markNode(node, True)
+				strEql = True
+				print("struct eql")
+				checkChildren(node["children"], node2["parent"]["children"], node, node2["parent"])
+
+			if not strEql: markSubtree(node, True)
+		else:
+			grayCount1+=1
+		
+
+	'''
 	for node in t1Nodes:
 		if not node["matched"]:
 			strEql = False
@@ -164,7 +213,9 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 			if not strEql: markSubtree(node, True)
 		else:
 			grayCount1 += 1
+	'''
 			
+	
 	for node in t2Nodes:
 		if not node["matched"]:
 			strEql = False

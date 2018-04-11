@@ -35,79 +35,28 @@ def equalTags(tags1, tags2, parent1, parent2):
 		if tag == "*": return True
 
 		#if it is a key in the equality map with an empty context
-		#if tag.lower() in refMaps.tagEqlMap and refMaps.tagEqlMap[tag.lower()][1] == context.Context():
 		if tag.lower() in refMaps.tagEqlMap:
 			for eqObj in refMaps.tagEqlMap[tag.lower()]:
 				if eqObj.context == context.Context() and cntxtInsensitiveCheck(eqObj, tags2): return True
-				elif cntxtInsensitiveCheck(eqObj, tags2) and equalContextTagsWrapper(eqObj, tag, tag, parent1, parent2):  
+				elif cntxtInsensitiveCheck(eqObj, tags2) and equalContextTagsWrapper(eqObj, parent1):  
 					print("context sensitive match!")
 					return True
-				#non empty context
-				#print("checking context")
-				#for tag_ in tags2:
-				#if equalContextTagsWrapper(tag, tag_, parent1, parent2): return True
+				
 	return False
 
-def equalContextTagsWrapper(eqObj, tag, tag_, parent1, parent2):
+def equalContextTagsWrapper(eqObj, parent1):
 
-	parent1Tags = None
-	parent2Tags = None
-	grandParent1Tags = None
-	grandParent2Tags = None
+	parentTags = None
+	gpTags = None
 	
 	if not parent1  == None:
 		if "tags" in parent1:
-			parent1Tags = parent1["tags"]
+			parentTags = parent1["tags"]
 
 		if "parent" in parent1 and "tags" in parent1["parent"]:
-			grandParent1Tags = parent1["parent"]["tags"]
+			gpTags = parent1["parent"]["tags"]
 
-	if not parent2 == None:
-		if "tags" in parent2:
-			parent2Tags = parent2["tags"]
-	
-		if "parent" in parent2 and "tags" in parent2["parent"]:
-			grandParent2Tags = parent2["parent"]["tags"]
-
-	print("checking if", tag, "with parent", parent1Tags, "matches:", eqObj.tags, "in", eqObj.context, ":", eqObj.context == context.Context(parent1Tags, grandParent1Tags))
-	return eqObj.context == context.Context(parent1Tags, grandParent1Tags)
-	#return equalContextTags(tag, tag_, parent1Tags, parent2Tags, grandParent1Tags, grandParent2Tags)
-
-def equalContextTags(tag, tag_, parent1Tags, parent2Tags, grandParent1Tags, grandParent2Tags):
-	'''
-	if (tag.lower() in refMaps.tagEqlMap and tag_.lower() in refMaps.tagEqlMap[tag.lower()][0]):
-		print("checking eqlContext of ", tag, "with parent:", parent1Tags, "and gps:", grandParent1Tags)
-		print("with", tag_, "with parent:", parent2Tags, "and gps:", grandParent2Tags, ":", refMaps.tagEqlMap[tag.lower()][1] == context.Context(parent1Tags, grandParent1Tags), "\n")
-
-
-	if levelUp(tag, parent2Tags):
-		print("leveling up:", tag_, "to", parent2Tags, "because of:", tag)
-		for ptag in parent2Tags:
-			equalContextTags(tag, ptag, parent1Tags, grandParent2Tags, grandParent1Tags, None)
-	elif levelUp(tag_, parent1Tags):
-		equalContextTags(parent1Tags, tag_, grandParent1Tags, parent2Tags, None, grandParent2Tags)
-
-
-	elif (tag.lower() in refMaps.tagEqlMap and tag_.lower() in refMaps.tagEqlMap[tag.lower()][0]
-		and refMaps.tagEqlMap[tag.lower()][1] == context.Context(parent1Tags, grandParent1Tags)):
-			return True
-
-	elif (tag_.lower() in refMaps.tagEqlMap and tag.lower() in refMaps.tagEqlMap[tag_.lower()][0]
-		and refMaps.tagEqlMap[tag_.lower()][1] == context.Context(parent2Tags, grandParent2Tags)):
-			return True
-	'''
-
-	'''
-	if (tag.lower() in tagEqlMap2 and tagEqlMap2[tag.lower()][0] == tag_.lower() 
-		and tagEqlMap2[tag.lower()][1] == Context(parent1Tags, grandParent1Tags)):
-			return True
-
-	elif (tag_.lower() in tagEqlMap2 and tagEqlMap2[tag_.lower()][0] == tag.lower()
-		and tagEqlMap2[tag_.lower()][1] == Context(parent2Tags, grandParent2Tags)):
-			return True
-	'''
-
-	return False
+	return eqObj.context == context.Context(parentTags, gpTags)
 
 
 def levelUp(tag, parent2):

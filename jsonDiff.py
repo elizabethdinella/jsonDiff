@@ -1,6 +1,8 @@
 import json
 import anytree
 import sys
+import utils
+import context
 
 grayCount1 = 0
 grayCount2 = 0
@@ -12,55 +14,6 @@ TODO: change this equality map to allow for more than two languages
 
 	The flow is that we check for tag equality. If there is not tag equality, then we check for structural equality, mark the node, and move	 on
 '''
-
-class Context:
-	def __init__(self, parentTags=None, grandParentTags=None):
-		self.parentTags = parentTags
-		self.grandParentTags = grandParentTags
-
-	def __eq__(self, other):
-		if self.parentTags == ["*"] or other.parentTags == ["*"]: return True
-
-		if (not self.parentTags == None and not other.parentTags == None):
-			print("checking if tags", self.parentTags, "and", other.parentTags, "match: ", tagsMatch(self.parentTags, other.parentTags, self.grandParentTags, other.grandParentTags))
-
-
-		if (not self.parentTags == None and not other.parentTags == None and 
-			not tagsMatch(self.parentTags, other.parentTags, self.grandParentTags, other.grandParentTags)):
-				return False
-
-
-		if (not self.grandParentTags == None and not other.grandParentTags == None):
-			print("checking if gp tags", self.grandParentTags, "and", other.grandParentTags, "match: ", tagsMatch(self.grandParentTags, other.grandParentTags, None, None))
-
-
-	
-		if (not self.grandParentTags == None and not other.grandParentTags == None and 
-			not tagsMatch(self.grandParentTags, other.grandParentTags, None, None)):
-				return False
-
-		'''if self.parentTags == None and not other.parentTags == None: return False
-		if not self.parentTags == None and other.parentTags == None: return False
-		if self.grandParentTags == None and not other.grandParentTags == None: return False
-		if not self.grandParentTags == None and other.grandParentTags == None: return False'''
-
-		return True
-
-#NOTE: everything in these maps must be ALL lowercase
-#      The * char indicates a wildcard (anything can match to it)
-
-#Context independent equality - (Tag1 always == Tag2 and Tag2 always == Tag1 regardless of context)
-tagEqualityMap = dict({"classdef": ["class"], "functiondef": ["function"], "compoundstmt": ["body"], "augassign": ["augmented", "assign"],
-			"binop": ["binary", "operator"]})
-
-
-#context dependent equality - (Tag1 always == Tag2 in the context A)
-#somehow fix this to be (body -> case -> if) instead of just a child of if 
-'''tagEqlMap2 = dict({"body":(["compoundstmt"], Context(["case"],["if"])), "else":(["compoundstmt"], Context(["if"], ["*"])), 
-		    "binary":(["*", "comparison"], Context(["case"], ["if"])), "binary":(["comparison"],Context(["while"],["*"]))})'''
-
-tagEqlMap2 = dict({"body":(["compoundstmt"], Context(["case"],["if"])), "else":(["compoundstmt"], Context(["if"], ["*"])), 
-		    "binary":(["*", "comparison"], Context(["case"], ["if"]))})
 
 #Context dependent - if this parent->child sub-tree is found, skip the child node. It is an extra node in one of the trees
 #TODO: fix this to go child->parent or something else to allow multiple contexts
@@ -117,110 +70,7 @@ def structuralEquality(node):
 
 	return inStructEqlMap(node["parent"], node)
 
-'''
-Checks if two tags are equal using the equality map
-'''
-def equalTags(tags1, tags2):
-	for tag in tags1:
-		if tag == "*": return True
-		for tag_ in tags2:
-			if tag.lower() == tag_.lower():
-				return True
-
-	for tag in tags1: #should be tags2?
-		if tag == "*": return True
-		if tag.lower() in tagEqualityMap:
-			for tag_ in tagEqualityMap[tag.lower()]:
-				if tag_.lower() not in tags2:
-					return False
-			return True
-
-	return False
-
-
-def levelUp(tag, parent2):
-	if tag == "binary": print("checking level up of", tag, "and", parent2)
-
-	if parent2 == None: return False
-	if tag.lower() in tagEqlMap2 and "*" in tagEqlMap2[tag.lower()][0]: print("checking level up of", tag, "and", parent2)
-	for ptag in parent2:
-		if(tag.lower() in tagEqlMap2 and "*" in tagEqlMap2[tag.lower()][0] and ptag in tagEqlMap2[tag.lower()][0]): return True
-
-	return False
-
-def equalContextTagsWrapper(tag, tag_, parent1, parent2):
-
-	parent1Tags = None
-	parent2Tags = None
-	grandParent1Tags = None
-	grandParent2Tags = None
-	
-	if not parent1  == None:
-		if "tags" in parent1:
-			parent1Tags = parent1["tags"]
-
-		if "parent" in parent1 and "tags" in parent1["parent"]:
-			grandParent1Tags = parent1["parent"]["tags"]
-
-	if not parent2 == None:
-		if "tags" in parent2:
-			parent2Tags = parent2["tags"]
-	
-		if "parent" in parent2 and "tags" in parent2["parent"]:
-			grandParent2Tags = parent2["parent"]["tags"]
-
-
-	return equalContextTags(tag, tag_, parent1Tags, parent2Tags, grandParent1Tags, grandParent2Tags)
-
-
-def equalContextTags(tag, tag_, parent1Tags, parent2Tags, grandParent1Tags, grandParent2Tags):
-	if (tag.lower() in tagEqlMap2 and tag_.lower() in tagEqlMap2[tag.lower()][0]):
-		print("checking eqlContext of ", tag, "with parent:", parent1Tags, "and gps:", grandParent1Tags)
-		print("with", tag_, "with parent:", parent2Tags, "and gps:", grandParent2Tags, ":", tagEqlMap2[tag.lower()][1] == Context(parent1Tags, grandParent1Tags), "\n")
-
-
-	if levelUp(tag, parent2Tags):
-		print("leveling up:", tag_, "to", parent2Tags, "because of:", tag)
-		for ptag in parent2Tags:
-			equalContextTags(tag, ptag, parent1Tags, grandParent2Tags, grandParent1Tags, None)
-	elif levelUp(tag_, parent1Tags):
-		equalContextTags(parent1Tags, tag_, grandParent1Tags, parent2Tags, None, grandParent2Tags)
-
-
-	elif (tag.lower() in tagEqlMap2 and tag_.lower() in tagEqlMap2[tag.lower()][0]
-		and tagEqlMap2[tag.lower()][1] == Context(parent1Tags, grandParent1Tags)):
-			return True
-
-	elif (tag_.lower() in tagEqlMap2 and tag.lower() in tagEqlMap2[tag_.lower()][0]
-		and tagEqlMap2[tag_.lower()][1] == Context(parent2Tags, grandParent2Tags)):
-			return True
-
-	'''
-	if (tag.lower() in tagEqlMap2 and tagEqlMap2[tag.lower()][0] == tag_.lower() 
-		and tagEqlMap2[tag.lower()][1] == Context(parent1Tags, grandParent1Tags)):
-			return True
-
-	elif (tag_.lower() in tagEqlMap2 and tagEqlMap2[tag_.lower()][0] == tag.lower()
-		and tagEqlMap2[tag_.lower()][1] == Context(parent2Tags, grandParent2Tags)):
-			return True
-	'''
-
-	return False
 			
-'''
-Given two nodes, check if any tags are equal
-'''
-def tagsMatch(tags1, tags2, parent1, parent2):
-	if equalTags(tags1, tags2) or equalTags(tags2, tags1):
-		return True
-	
-	for tag in tags1:
-		for tag_ in tags2:
-			if equalContextTagsWrapper(tag, tag_, parent1, parent2):
-				print("equal context!")
-				return True
-	return False
-
 def hasTags(node):
 	return "tags" in node 
 
@@ -245,7 +95,7 @@ def delAddedTags(node):
 
 def nodesMatch(node, node2, parent, parent2):
 	return ((hasTags(node) and hasTags(node2) and 
-		tagsMatch(node["tags"], node2["tags"], parent, parent2) and not node2["matched"]) 
+		utils.tagsMatch(node["tags"], node2["tags"], parent, parent2) and not node2["matched"]) 
 		or (not hasTags(node) and not hasTags(node2) and typesMatch(node, node2) and datasMatch(node, node2)))
 
 def firstParentNode(nodes):
@@ -335,14 +185,14 @@ def runner():
 		exit()
 
 	with open(sys.argv[1], 'r') as f:
-    		jsonObj1 = json.load(f)
+			jsonObj1 = json.load(f)
 
 	with open(sys.argv[2], 'r') as f:
 		jsonObj2 = json.load(f)
 
 	if not hasTags(jsonObj1) or not hasTags(jsonObj2):
 		print("error: illformatted json doesn't have tags")
-	elif not tagsMatch(jsonObj1["tags"], jsonObj2["tags"], None, None):
+	elif not utils.tagsMatch(jsonObj1["tags"], jsonObj2["tags"], None, None):
 		print("error: root nodes don't match")
 	else:
 		checkChildren(jsonObj1["children"], jsonObj2["children"], jsonObj1, jsonObj2)

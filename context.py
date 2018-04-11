@@ -33,5 +33,5 @@ class Context:
 
 		return True
 
-
-
+	def __str__(self): 
+		return "parent tags " + self.parentTags[0] + " gp tags " + self.grandParentTags[0]

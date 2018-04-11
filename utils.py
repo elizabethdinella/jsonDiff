@@ -19,6 +19,13 @@ def tagsMatch(tags1, tags2, parent1, parent2):
 	
 	return False
 
+
+def cntxtInsensitiveCheck(eqObj, tags2):
+	for tag_ in eqObj.tags:
+		if not tag_.lower() in tags2:
+			return False
+	return True
+
 '''
 Checks if two tags are equal using the equality map
 '''
@@ -28,20 +35,20 @@ def equalTags(tags1, tags2, parent1, parent2):
 		if tag == "*": return True
 
 		#if it is a key in the equality map with an empty context
-		if tag.lower() in refMaps.tagEqlMap and refMaps.tagEqlMap[tag.lower()][1] == context.Context():
-			for tag_ in refMaps.tagEqlMap[tag.lower()][0]: #make sure the matching node has all of the nodes in the map
-				if not tag_.lower() in tags2:
-					return False
-			return True
-		elif tag.lower() in refMaps.tagEqlMap: #non empty context
-			print("checking context")
-			for tag_ in tags2:
-				if equalContextTagsWrapper(tag, tag_, parent1, parent2):
-					print("eql context")
-				return equalContextTagsWrapper(tag, tag_, parent1, parent2)
+		#if tag.lower() in refMaps.tagEqlMap and refMaps.tagEqlMap[tag.lower()][1] == context.Context():
+		if tag.lower() in refMaps.tagEqlMap:
+			for eqObj in refMaps.tagEqlMap[tag.lower()]:
+				if eqObj.context == context.Context() and cntxtInsensitiveCheck(eqObj, tags2): return True
+				elif cntxtInsensitiveCheck(eqObj, tags2) and equalContextTagsWrapper(eqObj, tag, tag, parent1, parent2):  
+					print("context sensitive match!")
+					return True
+				#non empty context
+				#print("checking context")
+				#for tag_ in tags2:
+				#if equalContextTagsWrapper(tag, tag_, parent1, parent2): return True
 	return False
 
-def equalContextTagsWrapper(tag, tag_, parent1, parent2):
+def equalContextTagsWrapper(eqObj, tag, tag_, parent1, parent2):
 
 	parent1Tags = None
 	parent2Tags = None
@@ -62,10 +69,12 @@ def equalContextTagsWrapper(tag, tag_, parent1, parent2):
 		if "parent" in parent2 and "tags" in parent2["parent"]:
 			grandParent2Tags = parent2["parent"]["tags"]
 
-
-	return equalContextTags(tag, tag_, parent1Tags, parent2Tags, grandParent1Tags, grandParent2Tags)
+	print("checking if", tag, "with parent", parent1Tags, "matches:", eqObj.tags, "in", eqObj.context, ":", eqObj.context == context.Context(parent1Tags, grandParent1Tags))
+	return eqObj.context == context.Context(parent1Tags, grandParent1Tags)
+	#return equalContextTags(tag, tag_, parent1Tags, parent2Tags, grandParent1Tags, grandParent2Tags)
 
 def equalContextTags(tag, tag_, parent1Tags, parent2Tags, grandParent1Tags, grandParent2Tags):
+	'''
 	if (tag.lower() in refMaps.tagEqlMap and tag_.lower() in refMaps.tagEqlMap[tag.lower()][0]):
 		print("checking eqlContext of ", tag, "with parent:", parent1Tags, "and gps:", grandParent1Tags)
 		print("with", tag_, "with parent:", parent2Tags, "and gps:", grandParent2Tags, ":", refMaps.tagEqlMap[tag.lower()][1] == context.Context(parent1Tags, grandParent1Tags), "\n")
@@ -86,6 +95,7 @@ def equalContextTags(tag, tag_, parent1Tags, parent2Tags, grandParent1Tags, gran
 	elif (tag_.lower() in refMaps.tagEqlMap and tag.lower() in refMaps.tagEqlMap[tag_.lower()][0]
 		and refMaps.tagEqlMap[tag_.lower()][1] == context.Context(parent2Tags, grandParent2Tags)):
 			return True
+	'''
 
 	'''
 	if (tag.lower() in tagEqlMap2 and tagEqlMap2[tag.lower()][0] == tag_.lower() 

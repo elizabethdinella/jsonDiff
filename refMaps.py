@@ -1,6 +1,10 @@
 import context
 import eqTag
 
+adlDetailColor = "#B0B0B0"
+adlStrColor = "#8b98ca"
+notMatchedColor = "#ff0000"
+
 #create an equalTag object -> has a context and a list of tags
 
 #commonAST construct -> other language construct
@@ -24,4 +28,8 @@ tagEqlMap = dict({"classdef": [classNoCntxt], #classdef matches to class in any 
 			"binop": [binOpNoCntxt],
 			"comparison": [eqBinOpCntxt]})
 
+
+assignContext =  context.Context(["assign"], ["*"])
+adlDetailMap = dict({"literal": assignContext,
+		     "variable": assignContext})
 

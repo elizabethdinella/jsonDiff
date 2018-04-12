@@ -4,6 +4,7 @@ import sys
 import utils
 import context
 import match
+import refMaps
 
 grayCount1 = 0
 grayCount2 = 0
@@ -23,27 +24,49 @@ adlStructMap = dict({"class":"body", "binary":"*", "if":"case"})
 '''
 Given a node, mark it and all of its children recursivley, until we reach the leaves
 '''
-def markSubtree(node, isFirst):
-	markNode(node, isFirst)
+def getColor(node):
+	if not "tags" in node:
+		return refMaps.notMatchedColor		
+
+	parentTags = None
+	gpTags = None
+
+	if "parent" in node and "tags" in node["parent"]:
+		parentTags = node["parent"]["tags"]
+
+	if "parent" in node and "parent" in node["parent"] and "tags" in node["parent"]["parent"]:
+		gpTags = node["parent"]["parent"]["tags"]
+
+
+	for tag in node["tags"]:
+		if tag in refMaps.adlDetailMap and refMaps.adlDetailMap[tag] == context.Context(parentTags, gpTags): 
+			return refMaps.adlDetailColor
+
+	return refMaps.notMatchedColor
+
+
+def markSubtree(node):
+	markNode(node, getColor(node))
 
 	if not "children" in node:
 		return
 
 	for child in node["children"]:
-		markSubtree(child, isFirst)
+		markSubtree(child)
 
 '''
 Mark a single node
 '''
-def markNode(node, isFirst):
+def markNode(node, color):
 	if not utils.hasTags(node):
 		node["tags"] = []
 
-	if isFirst:
-		node["tags"].append("#ff0000")
-	else:
-		node["tags"].append("#ffff00")
+	node["tags"].append(color)
 
+	#if isFirst:
+	#node["tags"].append("#ff0000")
+	#else:
+	#node["tags"].append("#ffff00")
 
 '''
 Given a node and its parent, see if it exists in the structEql map
@@ -170,7 +193,7 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 		if additionalStructure(node):
 			node["matched"] = True
 			node["match"] = None
-			markNode(node, True)
+			markNode(node, refMaps.adlStrColor)
 			print(node["tags"], "is an additional strucutre")
 			#recurse with the unmatched node, and a tree2 node from the current level
 			'''node2 = nodeInSameLevel(t2Nodes)'''
@@ -218,12 +241,12 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 
 	unmatchedNodes = (node for node in t1Nodes if not node["matched"])
 	for node in unmatchedNodes:
-		markSubtree(node, True)		
+		markSubtree(node)		
 		#markNode(node, True)
 
 	unmatchedNodes = (node2 for node2 in t2Nodes if not node2["matched"])
 	for node2 in unmatchedNodes:
-		markSubtree(node2, False)	
+		markSubtree(node2)	
 		#markNode(node2, False)
 
 	#grayCount1+=1 for all matchedNodes

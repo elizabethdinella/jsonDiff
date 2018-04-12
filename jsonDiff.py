@@ -11,7 +11,7 @@ grayCount2 = 0
 
 #Context dependent - if this parent->child sub-tree is found, skip the child node. It is an extra node in one of the trees
 #TODO: fix this to go child->parent or something else to allow multiple contexts
-adlStructMap = dict({"class":"body", "binary":"*", "if":"case"})
+adlStructMap = dict({"class":"body", "if":"case", "call":"args", "call":"argument"})
 
 '''
 Given a node, mark it and all of its children recursivley, until we reach the leaves
@@ -20,18 +20,9 @@ def getColor(node):
 	if not "tags" in node:
 		return refMaps.notMatchedColor		
 
-	parentTags = None
-	gpTags = None
-
-	if "parent" in node and "tags" in node["parent"]:
-		parentTags = node["parent"]["tags"]
-
-	if "parent" in node and "parent" in node["parent"] and "tags" in node["parent"]["parent"]:
-		gpTags = node["parent"]["parent"]["tags"]
-
-
 	for tag in node["tags"]:
-		if tag in refMaps.adlDetailMap and refMaps.adlDetailMap[tag] == context.Context(parentTags, gpTags): 
+		if (tag.lower() in refMaps.adlDetailMap and refMaps.adlDetailMap[tag.lower()] == utils.createContext(node)): 
+			print(node["tags"], "is an additional detail")
 			return refMaps.adlDetailColor
 
 	return refMaps.notMatchedColor
@@ -43,6 +34,7 @@ def markSubtree(node):
 	if not "children" in node:
 		return
 
+	utils.editChildren(node)
 	for child in node["children"]:
 		markSubtree(child)
 
@@ -72,6 +64,7 @@ def inAdlStructMap(parent, node):
 		for tag_ in node["tags"]:
 			if (tag.lower() in adlStructMap and 
 				(adlStructMap[tag.lower()] == tag_.lower() or adlStructMap[tag.lower()] == "*")):
+				'''FIX THIS TO INCLUDE CONTEXTS'''
 				return True
 
 	return False
@@ -172,7 +165,6 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 	for node in unmatchedNodes:
 		if additionalStructure(node):
 			node["matched"] = True
-
 			node["match"] = None
 
 			markNode(node, refMaps.adlStrColor)
@@ -182,8 +174,8 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 			'''
 			See if there is a better match based on the additional structure
 			'''
-
-			for node2 in t2Nodes:
+			matchedNodes = (node for node in t2Nodes if node["matched"])
+			for node2 in matchedNodes:
 				utils.editChildren(node)
 				potentialMatches = utils.getAllPotentialMatches(node2, node["children"])
 				bestMatch = getBestMatch(potentialMatches)	
@@ -213,7 +205,8 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 	for node in matchedNodes:
 		if node["match"] == None: #At an adl structure node
 			node2 = nodeInSameLevel(t2Nodes)
-			checkChildren(node["children"], node2["parent"]["children"], node, node2["parent"])
+			if not node2 == None and "children" in node and "children" in node2["parent"]:
+				checkChildren(node["children"], node2["parent"]["children"], node, node2["parent"])
 			continue
 
 		node2 = node["match"].node

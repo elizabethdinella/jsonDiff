@@ -95,25 +95,35 @@ def equalTags(node1, node2, parent1, parent2):
 		if tag.lower() in refMaps.tagEqlMap:
 			for eqObj in refMaps.tagEqlMap[tag.lower()]:
 				if eqObj.context == context.Context() and cntxtInsensitiveCheck(eqObj, tags2): return 1
-				elif cntxtInsensitiveCheck(eqObj, tags2) and contextSensitiveCheck(eqObj, parent1):  
+				elif cntxtInsensitiveCheck(eqObj, tags2) and contextSensitiveCheck(eqObj, node1, parent1):  
 					return calculateConfidence(node1, node2, 1)
 					print("context sensitive match!")
 	return -1
 
-def contextSensitiveCheck(eqObj, parent1):
-
+def createContext(node):
+	lookaheadTags = None
 	parentTags = None
 	gpTags = None
 
+	if "children" in node:
+		lookaheadTags = []
+		for child in node["children"]:
+			if "tags" in child:
+				lookaheadTags += child["tags"]
 
-	if not parent1  == None:
-		if "tags" in parent1:
-			parentTags = parent1["tags"]
+	if not lookaheadTags == None and len(lookaheadTags) == 0:
+		lookaheadTags = None
 
-		if "parent" in parent1 and "tags" in parent1["parent"]:
-			gpTags = parent1["parent"]["tags"]
+	if "parent" in node and "tags" in node["parent"]:
+		parentTags = node["parent"]["tags"]
 
-	return eqObj.context == context.Context(parentTags, gpTags)
+	if "parent" in node and "parent" in node["parent"] and "tags" in node["parent"]["parent"]:
+		gpTags = node["parent"]["parent"]["tags"]
+
+	return context.Context(lookaheadTags, parentTags, gpTags)
+
+def contextSensitiveCheck(eqObj, node1, parent1):
+	return eqObj.context == createContext(node1)
 
 
 def levelUp(tag, parent2):

@@ -3,6 +3,7 @@ import anytree
 import sys
 import utils
 import context
+import match
 
 grayCount1 = 0
 grayCount2 = 0
@@ -17,7 +18,7 @@ TODO: change this equality map to allow for more than two languages
 
 #Context dependent - if this parent->child sub-tree is found, skip the child node. It is an extra node in one of the trees
 #TODO: fix this to go child->parent or something else to allow multiple contexts
-structEqlMap = dict({"class":"body", "binary":"*"})
+adlStructMap = dict({"class":"body", "binary":"*", "if":"case"})
 
 '''
 Given a node, mark it and all of its children recursivley, until we reach the leaves
@@ -35,7 +36,7 @@ def markSubtree(node, isFirst):
 Mark a single node
 '''
 def markNode(node, isFirst):
-	if not hasTags(node):
+	if not utils.hasTags(node):
 		node["tags"] = []
 
 	if isFirst:
@@ -47,32 +48,28 @@ def markNode(node, isFirst):
 '''
 Given a node and its parent, see if it exists in the structEql map
 '''
-def inStructEqlMap(parent, node):
-	if not hasTags(parent) or not hasTags(node): return False
+def inAdlStructMap(parent, node):
+	if not utils.hasTags(parent) or not utils.hasTags(node): return False
 	
 	#print("checking strEql of ", node["tags"], "with parent:", parent["tags"])
 	
 	for tag in parent["tags"]:
 		for tag_ in node["tags"]:
-			if (tag.lower() in structEqlMap and 
-				(structEqlMap[tag.lower()] == tag_.lower() or structEqlMap[tag.lower()] == "*")):
+			if (tag.lower() in adlStructMap and 
+				(adlStructMap[tag.lower()] == tag_.lower() or adlStructMap[tag.lower()] == "*")):
 				return True
 
 	return False
 
 
 '''
-Wrapper around inStructEqlMap
+Wrapper around inAdlStructMap
 '''
-def structuralEquality(node):
+def additionalStructure(node):
 	if not "parent" in node or not "tags" in node:
 		return False
 
-	return inStructEqlMap(node["parent"], node)
-
-			
-def hasTags(node):
-	return "tags" in node 
+	return inAdlStructMap(node["parent"], node)
 
 def datasMatch(node, node2):
 	return node["data"] == node2["data"]
@@ -87,18 +84,32 @@ def delAddedTags(node):
 	del node["parent"]
 	del node["matched"]
 
+	if "match" in node:
+		del node["match"]
+
 	if not "children" in node:
 		return;
 	
 	for child in node["children"]:
 		delAddedTags(child)
 
-def nodesMatch(node, node2, parent, parent2):
-	return ((hasTags(node) and hasTags(node2) and 
-		utils.tagsMatch(node["tags"], node2["tags"], parent, parent2) and not node2["matched"]) 
-		or (not hasTags(node) and not hasTags(node2) and typesMatch(node, node2) and datasMatch(node, node2)))
+def getBestMatch(potentialMatches):
+	#print("potentialMatches:")
+	#for match in potentialMatches:
+	#	print(match[0]["tags"])
 
-def firstParentNode(nodes):
+	bestConfValue = -1
+	bestMatch = None
+	for match in potentialMatches:
+		if match.confidence > bestConfValue:
+			bestMatch = match
+			bestConfValue = match.confidence
+
+	return bestMatch
+
+
+
+def nodeInSameLevel(nodes):
 	for node in nodes:
 		if "parent" in node:
 			return node
@@ -115,10 +126,12 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 	global grayCount2
 
 	#add the matched and parent tags
-	for node in t1Nodes:
+	unEditedNodes = (node for node in t1Nodes if not "matched" in node)
+	for node in unEditedNodes:
 		node["matched"] = False
 		node["parent"] = parent1
-	for node2 in t2Nodes:
+	unEditedNodes = (node for node in t2Nodes if not "matched" in node)
+	for node2 in unEditedNodes:
 		node2["matched"] = False
 		node2["parent"] = parent2
 
@@ -128,16 +141,23 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 
 	'''
 	for node in t1Nodes:	
-		for node2 in t2Nodes:
-			if nodesMatch(node, node2, parent1, parent2):		
-				node["matched"] = True
-				node2["matched"] = True
+		potentialMatches = utils.getAllPotentialMatches(node, t2Nodes)
+		bestMatch = getBestMatch(potentialMatches)	
+		if not node["matched"] and not bestMatch == None:
+			node2 = bestMatch.node
+			node["matched"] = True
+			node2["matched"] = True
+			node["match"] = bestMatch
+			node2["match"] = match.Match(node, bestMatch.confidence)
 
-				#If there is a match, we recurse on the children
-				if "children" in node and "children" in node2:
-					checkChildren(node["children"], node2["children"], node, node2)
-				break
-
+			'''
+			#dont do this yet!
+			#If there is a match, we recurse on the children
+			if "children" in node and "children" in node2:
+				checkChildren(node["children"], node2["children"], node, node2)
+			#break'''
+		
+	
 	'''
 	Second recurion - On the way up, check for structural equality 
 			(a node level that exists in one tree but not the other)
@@ -146,36 +166,65 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 	'''
 	unmatchedNodes = (node for node in t1Nodes if not node["matched"])
 	for node in unmatchedNodes:
-		if structuralEquality(node):
+		print("checking if", node["tags"], "is an additional struct")
+		if additionalStructure(node):
 			node["matched"] = True
+			node["match"] = None
 			markNode(node, True)
-			print("struct eql1")
+			print(node["tags"], "is an additional strucutre")
 			#recurse with the unmatched node, and a tree2 node from the current level
-			node2 = firstParentNode(t2Nodes)
+			'''node2 = nodeInSameLevel(t2Nodes)'''
 			#if we've reached the end of one of the trees
+			#Maybe don't do this yet
+			for node2 in t2Nodes:
+				utils.editChildren(node)
+				potentialMatches = utils.getAllPotentialMatches(node2, node["children"])
+				bestMatch = getBestMatch(potentialMatches)	
+				if not bestMatch == None and bestMatch.confidence > node2["match"].confidence:
+					node2["match"].node["match"] = None
+					node2["match"].node["matched"] = False
+					
+					node2["match"] = bestMatch
+					bestMatch.node["match"] = match.Match(node2, bestMatch.confidence)
+					
+
+			'''
 			if not node2 == None:
+				print("recursing on its children")
 				checkChildren(node["children"], node2["parent"]["children"], node, node2["parent"])
+			'''
 		#else: markSubtree(node, True)
 
+	'''
 	unmatchedNodes2 = (node2 for node2 in t2Nodes if not node2["matched"])
 	for node2 in unmatchedNodes:
-		if structuralEquality(node2):
+		print("checking if", node2["tags"], "is an additional struct")
+		if additionalStructure(node2):
 			node2["matched"] = True
 			markNode(node2, False)
 			print("struct eql2")
 			#recurse with the numatched node, and a tree1 node from the current level
 			checkChildren(node["parent"]["children"], node2["children"], node["parent"], node2)
 		#else: markSubtree(node2, False)
+	'''
+
+	matchedNodes = (node for node in t1Nodes if node["matched"] and not node["match"] == None)
+	for node in matchedNodes:
+		node2 = node["match"].node
+		if "children" in node and "children" in node2:
+			checkChildren(node["children"], node2["children"], node, node2)
+
 
 
 	unmatchedNodes = (node for node in t1Nodes if not node["matched"])
 	for node in unmatchedNodes:
 		markSubtree(node, True)		
+		#markNode(node, True)
 
 	unmatchedNodes = (node2 for node2 in t2Nodes if not node2["matched"])
 	for node2 in unmatchedNodes:
 		markSubtree(node2, False)	
-
+		#markNode(node2, False)
 
 	#grayCount1+=1 for all matchedNodes
 
@@ -190,9 +239,9 @@ def runner():
 	with open(sys.argv[2], 'r') as f:
 		jsonObj2 = json.load(f)
 
-	if not hasTags(jsonObj1) or not hasTags(jsonObj2):
+	if not utils.hasTags(jsonObj1) or not utils.hasTags(jsonObj2):
 		print("error: illformatted json doesn't have tags")
-	elif not utils.tagsMatch(jsonObj1["tags"], jsonObj2["tags"], None, None):
+	elif not utils.tagsMatch(jsonObj1, jsonObj2, None, None):
 		print("error: root nodes don't match")
 	else:
 		checkChildren(jsonObj1["children"], jsonObj2["children"], jsonObj1, jsonObj2)

@@ -4,26 +4,18 @@ class Context:
 	def __init__(self, parentTags=None, grandParentTags=None):
 		self.parentTags = parentTags
 		self.grandParentTags = grandParentTags
+		self.dummyParent = dict({"tags": parentTags})
+		self.dummyGP = dict({"tags": grandParentTags})
 
 	def __eq__(self, other):
 		if self.parentTags == ["*"] or other.parentTags == ["*"]: return True
 
-		if (not self.parentTags == None and not other.parentTags == None):
-			print("checking if tags", self.parentTags, "and", other.parentTags, "match: ", utils.tagsMatch(self.parentTags, other.parentTags, self.grandParentTags, other.grandParentTags))
-
-
 		if (not self.parentTags == None and not other.parentTags == None and 
-			not utils.tagsMatch(self.parentTags, other.parentTags, self.grandParentTags, other.grandParentTags)):
+			not utils.tagsMatch(self.dummyParent, other.dummyParent, self.dummyGP, other.dummyGP)):
 				return False
-
-
-		if (not self.grandParentTags == None and not other.grandParentTags == None):
-			print("checking if gp tags", self.grandParentTags, "and", other.grandParentTags, "match: ", utils.tagsMatch(self.grandParentTags, other.grandParentTags, None, None))
-
-
 	
 		if (not self.grandParentTags == None and not other.grandParentTags == None and 
-			not utils.tagsMatch(self.grandParentTags, other.grandParentTags, None, None)):
+			not utils.tagsMatch(self.dummyGP, other.dummyGP, None, None)):
 				return False
 
 		if self.parentTags == None and not other.parentTags == None: return False

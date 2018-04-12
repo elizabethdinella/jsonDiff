@@ -1,9 +1,20 @@
 import refMaps
 import context
-import match
+import match 
 
 def hasTags(node):
 	return "tags" in node 
+
+def matchNodes(node1, node2, conf):
+	node1["matched"] = True
+	node2["matched"] = True
+	node1["match"] = match.Match(node2, conf)
+	node2["match"] = match.Match(node1, conf)
+
+
+def unMatchNode(node):
+	node["match"] = None
+	node["matched"] = False
 
 '''
 Given two nodes, check if any tags are equal

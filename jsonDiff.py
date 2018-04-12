@@ -9,14 +9,6 @@ import refMaps
 grayCount1 = 0
 grayCount2 = 0
 
-'''
-TODO: change this equality map to allow for more than two languages 
-
-- we have tag equality and structural equality. structural equality means that we mark just the node but not the whole subtree. In the structural equality map we have tuples. If (parent, child) is in the map, and the parents are equal than mark the node.
-
-	The flow is that we check for tag equality. If there is not tag equality, then we check for structural equality, mark the node, and move	 on
-'''
-
 #Context dependent - if this parent->child sub-tree is found, skip the child node. It is an extra node in one of the trees
 #TODO: fix this to go child->parent or something else to allow multiple contexts
 adlStructMap = dict({"class":"body", "binary":"*", "if":"case"})
@@ -138,17 +130,19 @@ def nodeInSameLevel(nodes):
 			return node
 	return None
 
-'''Main recursive function - Three recursions occur:
-(1) Recurses down the tree to find nodes with context independent tag matching
-(2) On the way back up from (1), looks for structural equality. 
-	-> If found, recurse down again on that node
-(3) Recurse from the root down to the leaves deleting all of the added tags (Matched and Parent)
+'''Main recursive function - Occurs in the following steps:
+(1) For each node in tree1, find the best matching node in tree2
+(2) Check all unmatched nodes to see if they are an "additional structure" node
+	-> If there is a better match because of this new found structure, match that instead
+(3) Recurse on all matched nodes children
+(4) Cleanup Phase: Recurse from the root down to the leaves deleting all of the added tags (Matched and Parent)
 '''
 def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 	global grayCount1
 	global grayCount2
 
 	#add the matched and parent tags
+	#TODO - use the utils edit children function
 	unEditedNodes = (node for node in t1Nodes if not "matched" in node)
 	for node in unEditedNodes:
 		node["matched"] = False
@@ -160,63 +154,44 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 
 
 	'''
-	First recursion - Find a match in tree2 for each node in tree1
+	Step (1) - Find a match in tree2 for each node in tree1
 
 	'''
 	for node in t1Nodes:	
 		potentialMatches = utils.getAllPotentialMatches(node, t2Nodes)
 		bestMatch = getBestMatch(potentialMatches)	
 		if not node["matched"] and not bestMatch == None:
-			node2 = bestMatch.node
-			node["matched"] = True
-			node2["matched"] = True
-			node["match"] = bestMatch
-			node2["match"] = match.Match(node, bestMatch.confidence)
+			utils.matchNodes(node, bestMatch.node, bestMatch.confidence)	
 
-			'''
-			#dont do this yet!
-			#If there is a match, we recurse on the children
-			if "children" in node and "children" in node2:
-				checkChildren(node["children"], node2["children"], node, node2)
-			#break'''
 		
 	
 	'''
-	Second recurion - On the way up, check for structural equality 
-			(a node level that exists in one tree but not the other)
-
-	
+	Step (2) - Check all unmatched nodes for a additional structure node
 	'''
 	unmatchedNodes = (node for node in t1Nodes if not node["matched"])
 	for node in unmatchedNodes:
-		print("checking if", node["tags"], "is an additional struct")
 		if additionalStructure(node):
 			node["matched"] = True
+
 			node["match"] = None
+
 			markNode(node, refMaps.adlStrColor)
+
 			print(node["tags"], "is an additional strucutre")
-			#recurse with the unmatched node, and a tree2 node from the current level
-			'''node2 = nodeInSameLevel(t2Nodes)'''
-			#if we've reached the end of one of the trees
-			#Maybe don't do this yet
+
+			'''
+			See if there is a better match based on the additional structure
+			'''
+
 			for node2 in t2Nodes:
 				utils.editChildren(node)
 				potentialMatches = utils.getAllPotentialMatches(node2, node["children"])
 				bestMatch = getBestMatch(potentialMatches)	
 				if not bestMatch == None and bestMatch.confidence > node2["match"].confidence:
-					node2["match"].node["match"] = None
-					node2["match"].node["matched"] = False
+					utils.unMatchNode(node2["match"].node)
+					utils.matchNodes(node2, bestMatch.node, bestMatch.confidence)
 					
-					node2["match"] = bestMatch
-					bestMatch.node["match"] = match.Match(node2, bestMatch.confidence)
-					
-
-			'''
-			if not node2 == None:
-				print("recursing on its children")
-				checkChildren(node["children"], node2["parent"]["children"], node, node2["parent"])
-			'''
-		#else: markSubtree(node, True)
+			
 
 	'''
 	unmatchedNodes2 = (node2 for node2 in t2Nodes if not node2["matched"])
@@ -231,23 +206,33 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 		#else: markSubtree(node2, False)
 	'''
 
-	matchedNodes = (node for node in t1Nodes if node["matched"] and not node["match"] == None)
+	'''
+	Step (3) Recurse on all matched nodes children
+	'''
+	matchedNodes = (node for node in t1Nodes if node["matched"])
 	for node in matchedNodes:
+		if node["match"] == None: #At an adl structure node
+			node2 = nodeInSameLevel(t2Nodes)
+			checkChildren(node["children"], node2["parent"]["children"], node, node2["parent"])
+			continue
+
 		node2 = node["match"].node
 		if "children" in node and "children" in node2:
 			checkChildren(node["children"], node2["children"], node, node2)
 
 
 
+	'''
+	Step (4) Cleanup Phase
+	'''
+
 	unmatchedNodes = (node for node in t1Nodes if not node["matched"])
 	for node in unmatchedNodes:
 		markSubtree(node)		
-		#markNode(node, True)
 
 	unmatchedNodes = (node2 for node2 in t2Nodes if not node2["matched"])
 	for node2 in unmatchedNodes:
 		markSubtree(node2)	
-		#markNode(node2, False)
 
 	#grayCount1+=1 for all matchedNodes
 

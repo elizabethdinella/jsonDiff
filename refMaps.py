@@ -63,11 +63,14 @@ ifContext = context.Context(["*"],["!case"],["if"],["*"]) #! signifys not
 ifElseContext = context.Context(["+case"], ["*"], ["*"], ["*"])
 callContext = context.Context(["*"],["*"],["call"],["*"])
 functionContext = context.Context(["*"],["*"],["functiondef"],["*"])
-adlStructMap = dict({"body":classContext, 
-			"case":ifContext, 
-			"args":callContext, 
-			"if": ifElseContext,
-			"argument":callContext,
-			"paren":emptyCntxt,
-			"identifier":functionContext})
+noChildrenContext = context.Context(None,["*"], ["if"], ["*"])
+whileNoChildrenContext = context.Context(None,["*"], ["while"], ["*"])
+adlStructMap = dict({"body":[classContext], 
+			"case":[ifContext], 
+			"args":[callContext], 
+			"if": [ifElseContext],
+			"else": [noChildrenContext, whileNoChildrenContext],
+			"argument":[callContext],
+			"paren":[emptyCntxt],
+			"identifier":[functionContext]})
 

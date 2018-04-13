@@ -58,9 +58,10 @@ def additionalStructure(node):
 	
 	
 	for tag in node["tags"]:
-		if (tag.lower() in refMaps.adlStructMap and 
-			utils.createContext(node) == refMaps.adlStructMap[tag.lower()]):
-				return True
+		if tag.lower() in refMaps.adlStructMap:
+			for cntxt in refMaps.adlStructMap[tag.lower()]:
+				if utils.createContext(node) == cntxt:
+					return True
 
 	return False
 

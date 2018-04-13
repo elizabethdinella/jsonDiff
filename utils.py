@@ -19,6 +19,7 @@ def unMatchNode(node):
 def findMultTags(tags):
 	multTags = []
 	for tag in tags:
+		if tag == None: continue
 		if tag[0] == "+" and len(tag) > 1:
 			multTags.append(tag[1:])
 	return multTags
@@ -26,6 +27,7 @@ def findMultTags(tags):
 def findDenyTags(tags):
 	denyTags = []
 	for tag in tags:
+		if tag == None: continue
 		if tag[0] == "!":
 			denyTags.append(tag[1:])
 
@@ -46,6 +48,7 @@ def tagsMatch(node1, node2, parent1, parent2):
 
 	multCount1 = 0 
 	multCount2 = 0
+	
 	
 	#check if the tags are naively equal
 	for tag in tags1:

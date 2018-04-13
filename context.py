@@ -1,13 +1,15 @@
 import utils
 
 class Context:
-	def __init__(self, lookaheadTags=None, parentTags=None, grandParentTags=None):
+	def __init__(self, lookaheadTags=None, siblingTags=None, parentTags=None, grandParentTags=None):
 		self.lookaheadTags = lookaheadTags
+		self.siblingTags = siblingTags
 		self.parentTags = parentTags
 		self.grandParentTags = grandParentTags
 		self.dummyLookahead = dict({"tags": self.lookaheadTags})
 		self.dummyParent = dict({"tags": self.parentTags})
 		self.dummyGP = dict({"tags": self.grandParentTags})
+		self.dummySibling = dict({"tags": siblingTags})
 		self.dummyNode = dict({"tags": "*"})
 
 	def __eq__(self, other):
@@ -15,6 +17,11 @@ class Context:
 		if(not self.lookaheadTags == None and not other.lookaheadTags == None and 
 			(utils.tagsMatch(self.dummyLookahead, other.dummyLookahead, self.dummyNode, other.dummyNode) == -1)):
 				return False
+
+		if(not self.siblingTags == None and not other.siblingTags == None and 
+			(utils.tagsMatch(self.dummySibling, other.dummySibling, self.dummyParent, other.dummyParent) == -1)):
+				return False
+
 
 		if (not self.parentTags == None and not other.parentTags == None and 
 			(utils.tagsMatch(self.dummyParent, other.dummyParent, self.dummyGP, other.dummyGP) == -1)):
@@ -29,6 +36,8 @@ class Context:
 
 		if self.lookaheadTags == None and not other.lookaheadTags == None: return False
 		if not self.lookaheadTags == None and other.lookaheadTags == None: return False
+		if self.siblingTags == None and not other.siblingTags == None: return False
+		if not self.siblingTags == None and other.siblingTags == None: return False
 		if self.parentTags == None and not other.parentTags == None: return False
 		if not self.parentTags == None and other.parentTags == None: return False
 		if self.grandParentTags == None and not other.grandParentTags == None: return False

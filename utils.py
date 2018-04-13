@@ -16,20 +16,54 @@ def unMatchNode(node):
 	node["match"] = None
 	node["matched"] = False
 
+def findMultTags(tags):
+	multTags = []
+	for tag in tags:
+		if tag[0] == "+" and len(tag) > 1:
+			multTags.append(tag[1:])
+	return multTags
+
+def findDenyTags(tags):
+	denyTags = []
+	for tag in tags:
+		if tag[0] == "!":
+			denyTags.append(tag[1:])
+
+	return denyTags
+
+
 '''
 Given two nodes, check if any tags are equal
 '''
 def tagsMatch(node1, node2, parent1, parent2):
 	tags1 = node1["tags"]
 	tags2 = node2["tags"]
+	
+	deny = findDenyTags(tags1) + findDenyTags(tags2)
+	mult = findMultTags(tags1) + findMultTags(tags2)
+	if len(deny) > 0: print("deny tags:", deny)
+	if len(mult) > 0: print("mult tags:", mult)
 
+	multCount1 = 0 
+	multCount2 = 0
+	
 	#check if the tags are naively equal
 	for tag in tags1:
-		if tag == "*": return True
+		if len(deny) > 0: print(tag, "in deny?", tag in deny)
+		if tag == "*": return 1
+		if tag in deny: return -1
+		if tag in mult: multCount1 += 1
 		for tag_ in tags2:
-			if tag_ == "*": return True
-			if tag.lower() == tag_.lower():
-				return True
+			if tag_ == "*": return 1
+			if tag_ in deny: return -1
+			if tag_ in mult: mult2Count += 1
+			if tag.lower() == tag_.lower() and len(mult) == 0:
+				return 1
+
+		if len(deny) > 0: return 1
+
+	if len(mult) > 0 and multCount1 > 1 or multCount2 > 1: return 1
+	elif len(mult) > 0: return -1
 
 	confidence1 = equalTags(node1, node2, parent1, parent2) 
 	if not confidence1 == -1:
@@ -55,7 +89,8 @@ def confidenceOfMatch(node, node2, parent, parent2):
 
 def getAllPotentialMatches(node, t2Nodes):
 	potentialMatches = []
-	for node2 in t2Nodes:
+	unmatchedNodes = (node for node in t2Nodes if not node["matched"])
+	for node2 in unmatchedNodes:
 		confidence = confidenceOfMatch(node, node2, node["parent"], node2["parent"]) 
 		if not confidence == -1:
 			potentialMatches.append(match.Match(node2, confidence))
@@ -64,8 +99,8 @@ def getAllPotentialMatches(node, t2Nodes):
 
 def editChildren(node):
 	for child in node["children"]:
-		child["parent"] = node
-		child["matched"] = False		
+		if not "parent" in child: child["parent"] = node
+		if not "matched" in child: child["matched"] = False		
 
 def calculateConfidence(node1, node2, level):
 	print("calculating confidence of matching", node1["tags"], "and", node2["tags"])
@@ -102,6 +137,7 @@ def equalTags(node1, node2, parent1, parent2):
 
 def createContext(node):
 	lookaheadTags = None
+	siblingTags = None
 	parentTags = None
 	gpTags = None
 
@@ -114,13 +150,23 @@ def createContext(node):
 	if not lookaheadTags == None and len(lookaheadTags) == 0:
 		lookaheadTags = None
 
+	if "parent" in node and "children" in node["parent"]:
+		siblingTags = []
+		for child in node["parent"]["children"]:
+			if "tags" in child and not child == node:
+				siblingTags += child["tags"]
+
+	if not siblingTags == None and len(siblingTags) == 0:
+		siblingTags = None
+
 	if "parent" in node and "tags" in node["parent"]:
 		parentTags = node["parent"]["tags"]
+
 
 	if "parent" in node and "parent" in node["parent"] and "tags" in node["parent"]["parent"]:
 		gpTags = node["parent"]["parent"]["tags"]
 
-	return context.Context(lookaheadTags, parentTags, gpTags)
+	return context.Context(lookaheadTags, siblingTags, parentTags, gpTags)
 
 def contextSensitiveCheck(eqObj, node1, parent1):
 	return eqObj.context == createContext(node1)

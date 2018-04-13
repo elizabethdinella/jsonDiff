@@ -6,6 +6,9 @@ import context
 import match
 import refMaps
 
+printAdlDetail = False
+printAdlStr = True
+
 grayCount1 = 0
 grayCount2 = 0
 
@@ -20,7 +23,7 @@ def getColor(node):
 		if tag.lower() in refMaps.adlDetailMap:
 			for cntxt in refMaps.adlDetailMap[tag.lower()]:
 				if cntxt == utils.createContext(node): 
-					print(node["tags"], "is an additional detail")
+					if printAdlDetail: print(node["tags"], "is an additional detail")
 					return refMaps.adlDetailColor
 
 	return refMaps.notMatchedColor
@@ -60,6 +63,7 @@ def additionalStructure(node):
 	for tag in node["tags"]:
 		if tag.lower() in refMaps.adlStructMap:
 			for cntxt in refMaps.adlStructMap[tag.lower()]:
+				if tag == "paren": print("checking if", utils.createContext(node), "==", cntxt,":", utils.createContext(node) == cntxt)
 				if utils.createContext(node) == cntxt:
 					return True
 
@@ -147,7 +151,6 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 	'''
 	Step (2) - Check all unmatched nodes for a additional structure node
 	'''
-	#unmatchedNodes = (node for node in t1Nodes if not node["matched"])
 	for node in t1Nodes:
 		if additionalStructure(node):
 			if "match" in node: utils.unMatchNode(node["match"].node)
@@ -171,7 +174,6 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 					utils.matchNodes(node2, bestMatch.node, bestMatch.confidence)
 
 					
-	#unmatchedNodes = (node for node in t2Nodes if not node["matched"])
 	for node in t2Nodes:
 		if additionalStructure(node):
 			if "match" in node and not node["match"] == None: utils.unMatchNode(node["match"].node)
@@ -180,7 +182,7 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 
 			markNode(node, refMaps.adlStrColor)
 
-			print(node["tags"], "is an additional strucutre")
+			if printAdlStr: print(node["tags"], "is an additional strucutre")
 
 			'''
 			See if there is a better match based on the additional structure
@@ -200,10 +202,18 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 	'''
 	matchedNodes = (node for node in t1Nodes if node["matched"])
 	for node in matchedNodes:
-		if node["match"] == None: #At an adl structure node
-			node2 = nodeInSameLevel(t2Nodes)
+		node2 = nodeInSameLevel(t2Nodes)
+		if node["match"] == None:
+			if not node2 == None and node2["matched"] and node2["match"] == None: #both are adl str
+				print("both", node["tags"], "and", node2["tags"], "are both adl str nodes")
+				children2 = node2["children"]
+				parent2 = node2
+			elif not node2 == None:  #only node1 is an adl
+				children2 = node2["parent"]["children"]
+				parent2 = node2["parent"]
+
 			if not node2 == None and "children" in node and "children" in node2["parent"]:
-				checkChildren(node["children"], node2["parent"]["children"], node, node2["parent"])
+				checkChildren(node["children"], children2, node, parent2)
 			continue
 
 		node2 = node["match"].node

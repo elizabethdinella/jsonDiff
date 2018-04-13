@@ -43,8 +43,6 @@ def tagsMatch(node1, node2, parent1, parent2):
 	
 	deny = findDenyTags(tags1) + findDenyTags(tags2)
 	mult = findMultTags(tags1) + findMultTags(tags2)
-	if len(deny) > 0: print("deny tags:", deny)
-	if len(mult) > 0: print("mult tags:", mult)
 
 	multCount1 = 0 
 	multCount2 = 0
@@ -52,12 +50,11 @@ def tagsMatch(node1, node2, parent1, parent2):
 	
 	#check if the tags are naively equal
 	for tag in tags1:
-		if len(deny) > 0: print(tag, "in deny?", tag in deny)
-		if tag == "*": return 1
+		if tag == "\*": return 1
 		if tag in deny: return -1
 		if tag in mult: multCount1 += 1
 		for tag_ in tags2:
-			if tag_ == "*": return 1
+			if tag_ == "\*": return 1
 			if tag_ in deny: return -1
 			if tag_ in mult: mult2Count += 1
 			if tag.lower() == tag_.lower() and len(mult) == 0:
@@ -173,17 +170,4 @@ def createContext(node):
 
 def contextSensitiveCheck(eqObj, node1, parent1):
 	return eqObj.context == createContext(node1)
-
-
-def levelUp(tag, parent2):
-	if tag == "binary": print("checking level up of", tag, "and", parent2)
-
-	if parent2 == None: return False
-	if tag.lower() in refMaps.tagEqlMap and "*" in refMaps.tagEqlMap[tag.lower()][0]: print("checking level up of", tag, "and", parent2)
-	for ptag in parent2:
-		if(tag.lower() in refMaps.tagEqlMap and "*" in refMaps.tagEqlMap[tag.lower()][0] and ptag in refMaps.tagEqlMap[tag.lower()][0]): return True
-
-	return False
-
-
 

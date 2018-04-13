@@ -14,17 +14,17 @@ classNoCntxt = eqTag.EqTag(["class"], emptyCntxt, "py")
 functionNoCntxt = eqTag.EqTag(["function"], emptyCntxt, "py")
 augAssignNoCntxt = eqTag.EqTag(["augmented", "assign"], emptyCntxt, "py") 
 binOpNoCntxt = eqTag.EqTag(["binary", "operator"], emptyCntxt, "py") 
-bodyIfCntxt = eqTag.EqTag(["body"], context.Context(["*"],["*"],["case"],["if"]), "py")
-bodyForCntxt = eqTag.EqTag(["body"], context.Context(["*"],["*"],["for"],["*"]), "py")
-bodyWhileCntxt = eqTag.EqTag(["body"], context.Context(["*"],["*"],["while"], ["*"]), "py")
-bodyFuncCntxt = eqTag.EqTag(["body"], context.Context(["*"],["*"],["function"],["*"]), "py")
-elseIfCntxt = eqTag.EqTag(["else"], context.Context(["*"],["*"],["if"],["*"]), "py")
-lteBinOpCntxt = eqTag.EqTag(["binary", "operator"], context.Context(["lte"],["*"], ["*"],["*"]), "py")
-ltBinOpCntxt = eqTag.EqTag(["binary", "operator"], context.Context(["lt"],["*"], ["*"],["*"]), "py")
-gtBinOpCntxt = eqTag.EqTag(["binary", "operator"], context.Context(["gt"],["*"], ["*"],["*"]), "py")
-gteBinOpCntxt = eqTag.EqTag(["binary", "operator"], context.Context(["gte"],["*"], ["*"],["*"]), "py")
-eqBinOpCntxt = eqTag.EqTag(["binary", "operator"], context.Context(["equals"],["*"], ["*"],["*"]), "py")
-caseIfCntxt = eqTag.EqTag(["case"], context.Context(["*"], ["*"], ["if"],["*"]), "py")
+bodyIfCntxt = eqTag.EqTag(["body"], context.Context(["\*"],["\*"],["case"],["if"]), "py")
+bodyForCntxt = eqTag.EqTag(["body"], context.Context(["\*"],["\*"],["for"],["\*"]), "py")
+bodyWhileCntxt = eqTag.EqTag(["body"], context.Context(["\*"],["\*"],["while"], ["\*"]), "py")
+bodyFuncCntxt = eqTag.EqTag(["body"], context.Context(["\*"],["\*"],["function"],["\*"]), "py")
+elseIfCntxt = eqTag.EqTag(["else"], context.Context(["\*"],["\*"],["if"],["\*"]), "py")
+lteBinOpCntxt = eqTag.EqTag(["binary", "operator"], context.Context(["lte"],["\*"], ["\*"],["\*"]), "py")
+ltBinOpCntxt = eqTag.EqTag(["binary", "operator"], context.Context(["lessthan"],["\*"], ["\*"],["\*"]), "py")
+gtBinOpCntxt = eqTag.EqTag(["binary", "operator"], context.Context(["gt"],["\*"], ["\*"],["\*"]), "py")
+gteBinOpCntxt = eqTag.EqTag(["binary", "operator"], context.Context(["gte"],["\*"], ["\*"],["\*"]), "py")
+eqBinOpCntxt = eqTag.EqTag(["binary", "operator"], context.Context(["equals"],["\*"], ["\*"],["\*"]), "py")
+caseIfCntxt = eqTag.EqTag(["case"], context.Context(["\*"], ["\*"], ["if"],["\*"]), "py")
 
 
 tagEqlMap = dict({"classdef": [classNoCntxt], #classdef matches to class in any context
@@ -36,16 +36,16 @@ tagEqlMap = dict({"classdef": [classNoCntxt], #classdef matches to class in any 
 			"if": [caseIfCntxt]})
 
 
-assignContext =  context.Context(["*"],["*"],["assign"],["*"])
-functionContext =  context.Context(["*"],["*"],["function"],["*"])
-paramContext =  context.Context(["*"],["*"],["parameters"],["*"])
-accessContext =  context.Context(["*"],["*"],["access"],["*"])
-binOpContext = context.Context(["*"], ["*"],["binary", "operator"], ["*"])
+assignContext =  context.Context(["\*"],["\*"],["assign"],["\*"])
+functionContext =  context.Context(["\*"],["\*"],["function"],["\*"])
+paramContext =  context.Context(["\*"],["\*"],["parameters"],["\*"])
+accessContext =  context.Context(["\*"],["\*"],["access"],["\*"])
+binOpContext = context.Context(["\*"], ["\*"],["binary", "operator"], ["\*"])
 adlDetailMap = dict({"literal": [assignContext, binOpContext],
-			"string": [assignContext],
+			"string": [assignContext, binOpContext],
 			"gt": [binOpContext],
 			"gte": [binOpContext],
-			"lt": [binOpContext],
+			"lessthan": [binOpContext],
 			"lte": [binOpContext],
 			"eq": [binOpContext],
 			"and": [binOpContext],
@@ -55,21 +55,24 @@ adlDetailMap = dict({"literal": [assignContext, binOpContext],
 			"parameter": [paramContext],
 			"access": [assignContext, binOpContext],
 			"minus": [binOpContext],
-			"plus": [binOpContext]})
+			"plus": [binOpContext],
+			"exponent": [binOpContext],
+			"multiply":[binOpContext]})
 
-classContext = context.Context(["*"],["*"],["class"],["*"])
-ifContext = context.Context(["*"],["!case"],["if"],["*"]) #! signifys not
+classContext = context.Context(["\*"],["\*"],["class"],["\*"])
+ifContext = context.Context(["\*"],["!case"],["if"],["\*"]) #! signifys not
 
-ifElseContext = context.Context(["+case"], ["*"], ["*"], ["*"])
-callContext = context.Context(["*"],["*"],["call"],["*"])
-functionContext = context.Context(["*"],["*"],["functiondef"],["*"])
-noChildrenContext = context.Context(None,["*"], ["if"], ["*"])
-whileNoChildrenContext = context.Context(None,["*"], ["while"], ["*"])
+ifElseContext = context.Context(["+case"], ["\*"], ["\*"], ["\*"])
+callContext = context.Context(["\*"],["\*"],["call"],["\*"])
+functionContext = context.Context(["\*"],["\*"],["functiondef"],["\*"])
+noChildrenContext = context.Context(None,["\*"], ["if"], ["\*"])
+whileNoChildrenContext = context.Context(None,["\*"], ["while"], ["\*"])
+forNoChildrenContext = context.Context(None,["\*"], ["for"], ["\*"])
 adlStructMap = dict({"body":[classContext], 
 			"case":[ifContext], 
 			"args":[callContext], 
 			"if": [ifElseContext],
-			"else": [noChildrenContext, whileNoChildrenContext],
+			"else": [noChildrenContext, whileNoChildrenContext, forNoChildrenContext],
 			"argument":[callContext],
 			"paren":[emptyCntxt],
 			"identifier":[functionContext]})

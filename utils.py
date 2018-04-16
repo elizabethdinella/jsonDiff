@@ -6,11 +6,11 @@ def hasTags(node):
 	return "tags" in node 
 
 def matchNodes(node1, node2, conf):
+	#print("matching nodes", node1["tags"], "and", node2["tags"])
 	node1["matched"] = True
 	node2["matched"] = True
 	node1["match"] = match.Match(node2, conf)
 	node2["match"] = match.Match(node1, conf)
-
 
 def unMatchNode(node):
 	node["match"] = None
@@ -89,13 +89,40 @@ def confidenceOfMatch(node, node2, parent, parent2):
 
 def getAllPotentialMatches(node, t2Nodes):
 	potentialMatches = []
-	unmatchedNodes = (node for node in t2Nodes if not node["matched"])
+	unmatchedNodes = []
+
+	for node2 in t2Nodes:
+		if not node2["matched"]:
+			unmatchedNodes.append(node2)
+
+	adlStrNodes = (node2 for node2 in t2Nodes if additionalStructure(node2))
+	for adlStrNode in adlStrNodes:
+		#print("adding children of", adlStrNode["tags"])
+		if not "children" in adlStrNode: continue
+		editChildren(adlStrNode)
+		unmatchedNodes += adlStrNode["children"]
+
 	for node2 in unmatchedNodes:
 		confidence = confidenceOfMatch(node, node2, node["parent"], node2["parent"]) 
 		if not confidence == -1:
 			potentialMatches.append(match.Match(node2, confidence))
-
+		
 	return potentialMatches
+
+'''
+Given a node and its parent, see if it exists in the structEql map
+'''
+def additionalStructure(node):
+	if not hasTags(node): return False
+	for tag in node["tags"]:
+		if tag.lower() in refMaps.adlStructMap:
+			for cntxt in refMaps.adlStructMap[tag.lower()]:
+				if createContext(node) == cntxt:
+					return True
+
+	return False
+
+
 
 def editChildren(node):
 	for child in node["children"]:
@@ -132,7 +159,6 @@ def equalTags(node1, node2, parent1, parent2):
 				if eqObj.context == context.Context() and cntxtInsensitiveCheck(eqObj, tags2): return 1
 				elif cntxtInsensitiveCheck(eqObj, tags2) and contextSensitiveCheck(eqObj, node1, parent1):  
 					return calculateConfidence(node1, node2, 1)
-					print("context sensitive match!")
 	return -1
 
 def createContext(node):

@@ -90,12 +90,12 @@ def delAddedTags(node, first):
 		if "tags" in node and refMaps.adlDetailColor in node["tags"]: adlDetail1 += 1
 		elif "tags" in node and refMaps.adlStrColor in node["tags"]: adlStr1 += 1
 		elif "tags" in node and refMaps.notMatchedColor in node["tags"]: unmatched1 += 1
-		else: matched1 += 1
+		elif "tags" in node: matched1 += 1
 	else:
 		if "tags" in node and refMaps.adlDetailColor in node["tags"]: adlDetail2 += 1
 		elif "tags" in node and refMaps.adlStrColor in node["tags"]: adlStr2 += 1
 		elif "tags" in node and refMaps.notMatchedColor in node["tags"]: unmatched2 += 1
-		else: matched2 += 1
+		elif "tags" in node: matched2 += 1
 
 
 	if not "matched" in node:
@@ -184,8 +184,7 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 			if not node["matched"] and not bestMatch == None:
 				utils.matchNodes(node, bestMatch.node, bestMatch.confidence)
 
-		matchedNodes = (node for node in t1Nodes if node["matched"])
-
+	matchedNodes = (node for node in t1Nodes if node["matched"])
 	for node in matchedNodes:
 		if utils.additionalStructure(node) and "children" in node: 
 			#print("recursing with the children of", node["tags"], "and t2nodes")

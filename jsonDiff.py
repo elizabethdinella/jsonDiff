@@ -49,7 +49,7 @@ def markSubtree(node, color):
 def markAllNodes(nodes):
 	unmatchedNodes = (node for node in nodes if (not "matched" in node or (not node["matched"])))
 	for node in unmatchedNodes:
-		if utils.additionalStructure(node): continue
+		if "adlstr" in node: continue
 		color = getColor(node)
 		markSubtree(node, color)
 
@@ -128,71 +128,62 @@ def getBestMatch(potentialMatches):
 	return bestMatch
 
 
-
-def nodeInSameLevel(nodes):
-	for node in nodes:
-		if "parent" in node:
-			return node
-	return None
-
 '''Main recursive function - Occurs in the following steps:
-(1) For each node in tree1, find the best matching node in tree2
-(2) Check all unmatched nodes to see if they are an "additional structure" node
-	-> If there is a better match because of this new found structure, match that instead
+(1) For each node in tree2, check if it is an "additional structure" node. 
+    An "additional structure" node is a node that exists in one tree, but not the other, and if removed would not affect
+    the data in the tree.
+(2) For each node in tree1, find the best matching node in tree2
 (3) Recurse on all matched nodes children
-(4) Cleanup Phase: Recurse from the root down to the leaves deleting all of the added tags (Matched and Parent)
 '''
 def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 
-	#add the matched and parent tags
-	#TODO - use the utils edit children function
-	unEditedNodes = (node for node in t1Nodes if not "matched" in node)
-	for node in unEditedNodes:
-		node["matched"] = False
-		node["parent"] = parent1
-	unEditedNodes = (node for node in t2Nodes if not "matched" in node)
-	for node2 in unEditedNodes:
-		node2["matched"] = False
-		node2["parent"] = parent2
-
+	'''
+	Step (1) - find all additional structure nodes in tree2
+	'''
 
 	for node2 in t2Nodes:
 		if utils.additionalStructure(node2):
 			if "match" in node2 and not node2["match"] == None: utils.unMatchNode(node2["match"].node)
 			node2["matched"] = True
 			node2["match"] = None
-
+			node2["adlStr"] = True
 			markNode(node2, refMaps.adlStrColor)
-
 			if printAdlStr: print(node2["tags"], "is an additional strucutre")
 
 
 	'''
-	Step (1) - Find a match in tree2 for each node in tree1
+	Step (2) - Find a match in tree2 for each node in tree1
 
 	'''
 	for node in t1Nodes:	
 		if utils.additionalStructure(node):
 			node["matched"] = True
 			node["match"] = None
+			node["adlStr"] = True
 			markNode(node, refMaps.adlStrColor)
 			if printAdlStr: print(node["tags"], "is an additional strucutre")
 
 		else:
 			potentialMatches = utils.getAllPotentialMatches(node, t2Nodes)
-			bestMatch = getBestMatch(potentialMatches) #should give an index
+			bestMatch = getBestMatch(potentialMatches) 
 			if not node["matched"] and not bestMatch == None:
 				utils.matchNodes(node, bestMatch.node, bestMatch.confidence)
 
+	'''
+	Step (3) - Recurse on all children
+	'''
+
 	matchedNodes = (node for node in t1Nodes if node["matched"])
 	for node in matchedNodes:
-		if utils.additionalStructure(node) and "children" in node: 
+		utils.editChildren(node)
+		if "adlStr" in node and "children" in node: 
 			#print("recursing with the children of", node["tags"], "and t2nodes")
 			checkChildren(node["children"], t2Nodes, node, parent2)
 		else:
 			node2 = node["match"].node
 			#print("recursing with the children of", node["tags"], "and", node2["tags"])
 			if "children" in node and "children" in node2:
+				utils.editChildren(node2)	
 				checkChildren(node["children"], node2["children"], node, node2)
 
 	
@@ -215,6 +206,8 @@ def runner():
 	elif not utils.tagsMatch(jsonObj1, jsonObj2, None, None):
 		print("error: root nodes don't match")
 	else:
+		utils.editChildren(jsonObj1)
+		utils.editChildren(jsonObj2)
 		checkChildren(jsonObj1["children"], jsonObj2["children"], jsonObj1, jsonObj2)
 		#if not grayCount1 == grayCount2:
 		#	print("error: number of gray nodes in each graph is not equal. We have a problem")

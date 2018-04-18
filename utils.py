@@ -37,7 +37,7 @@ def findDenyTags(tags):
 '''
 Given two nodes, check if any tags are equal
 '''
-def tagsMatch(node1, node2, parent1, parent2):
+def tagsMatch(node1, node2, parent1, parent2, lang):
 	tags1 = node1["tags"]
 	tags2 = node2["tags"]
 	
@@ -65,21 +65,23 @@ def tagsMatch(node1, node2, parent1, parent2):
 	if len(mult) > 0 and multCount1 > 1 or multCount2 > 1: return 1
 	elif len(mult) > 0: return -1
 
-	confidence1 = equalTags(node1, node2, parent1, parent2) 
+	confidence1 = equalTags(node1, node2, parent1, parent2, lang) 
 	if not confidence1 == -1:
 		return confidence1
 
-	return equalTags(node2, node1, parent2, parent1)
+	return equalTags(node2, node1, parent2, parent1, lang)
 
 def cntxtInsensitiveCheck(eqObj, tags2):
+	tags2 = [tag.lower() for tag in tags2]
+
 	for tag_ in eqObj.tags:
 		if not tag_.lower() in tags2:
 			return False
 	return True
 
-def confidenceOfMatch(node, node2, parent, parent2):
+def confidenceOfMatch(node, node2, parent, parent2, lang):
 	if hasTags(node) and hasTags(node2): #and not node2["matched"]:
-		confidence1 = tagsMatch(node, node2, parent, parent2)
+		confidence1 = tagsMatch(node, node2, parent, parent2, lang)
 		if not confidence1 == -1:
 			return confidence1
 		elif not hasTags(node) and not hasTags(node2) and typesMatch(node, node2) and datasMatch(node, node2): return 1
@@ -87,7 +89,7 @@ def confidenceOfMatch(node, node2, parent, parent2):
 	return -1
 
 
-def getAllPotentialMatches(node, t2Nodes):
+def getAllPotentialMatches(node, t2Nodes,lang):
 	potentialMatches = []
 	unmatchedNodes = []
 
@@ -95,7 +97,7 @@ def getAllPotentialMatches(node, t2Nodes):
 		if not node2["matched"]:
 			unmatchedNodes.append(node2)
 
-	adlStrNodes = (node2 for node2 in t2Nodes if additionalStructure(node2))
+	adlStrNodes = (node2 for node2 in t2Nodes if additionalStructure(node2,lang))
 	for adlStrNode in adlStrNodes:
 		#print("adding children of", adlStrNode["tags"])
 		if not "children" in adlStrNode: continue
@@ -103,7 +105,7 @@ def getAllPotentialMatches(node, t2Nodes):
 		unmatchedNodes += adlStrNode["children"]
 
 	for node2 in unmatchedNodes:
-		confidence = confidenceOfMatch(node, node2, node["parent"], node2["parent"]) 
+		confidence = confidenceOfMatch(node, node2, node["parent"], node2["parent"], lang) 
 		if not confidence == -1:
 			potentialMatches.append(match.Match(node2, confidence))
 		
@@ -112,12 +114,12 @@ def getAllPotentialMatches(node, t2Nodes):
 '''
 Given a node and its parent, see if it exists in the structEql map
 '''
-def additionalStructure(node):
+def additionalStructure(node,lang):
 	if not hasTags(node): return False
 	for tag in node["tags"]:
 		if tag.lower() in refMaps.adlStructMap:
 			for cntxt in refMaps.adlStructMap[tag.lower()]:
-				if createContext(node) == cntxt:
+				if createContext(node,lang) == cntxt:
 					return True
 
 	return False
@@ -129,7 +131,7 @@ def editChildren(node):
 		if not "parent" in child: child["parent"] = node
 		if not "matched" in child: child["matched"] = False		
 
-def calculateConfidence(node1, node2, level):
+def calculateConfidence(node1, node2, level,lang):
 	print("calculating confidence of matching", node1["tags"], "and", node2["tags"])
 	numMatch = 0 
 	if "children" in node1 and "children" in node2:
@@ -138,7 +140,7 @@ def calculateConfidence(node1, node2, level):
 
 		for child in node1["children"]:
 			child["parent"] = node1
-			numMatch += len(getAllPotentialMatches(child, node2["children"]))
+			numMatch += len(getAllPotentialMatches(child, node2["children"], lang))
 		print("confidence: ", numMatch / len(node1["children"]))
 		return numMatch / len(node1["children"])
 
@@ -148,7 +150,7 @@ def calculateConfidence(node1, node2, level):
 '''
 Checks if two tags are equal using the equality map
 '''
-def equalTags(node1, node2, parent1, parent2):
+def equalTags(node1, node2, parent1, parent2, lang):
 	tags1 = node1["tags"]
 	tags2 = node2["tags"]
 
@@ -156,12 +158,12 @@ def equalTags(node1, node2, parent1, parent2):
 	for tag in tags1:
 		if tag.lower() in refMaps.tagEqlMap:
 			for eqObj in refMaps.tagEqlMap[tag.lower()]:
-				if eqObj.context == context.Context() and cntxtInsensitiveCheck(eqObj, tags2): return 1
-				elif cntxtInsensitiveCheck(eqObj, tags2) and contextSensitiveCheck(eqObj, node1, parent1):  
-					return calculateConfidence(node1, node2, 1)
+				if eqObj.context == context.Context(lang) and cntxtInsensitiveCheck(eqObj, tags2): return 1
+				elif cntxtInsensitiveCheck(eqObj, tags2) and contextSensitiveCheck(eqObj, node1, lang):  
+					return calculateConfidence(node1, node2, 1,lang)
 	return -1
 
-def createContext(node):
+def createContext(node,lang):
 	lookaheadTags = None
 	siblingTags = None
 	parentTags = None
@@ -192,8 +194,7 @@ def createContext(node):
 	if "parent" in node and "parent" in node["parent"] and "tags" in node["parent"]["parent"]:
 		gpTags = node["parent"]["parent"]["tags"]
 
-	return context.Context(lookaheadTags, siblingTags, parentTags, gpTags)
+	return context.Context(lang, lookaheadTags, siblingTags, parentTags, gpTags)
 
-def contextSensitiveCheck(eqObj, node1, parent1):
-	return eqObj.context == createContext(node1)
-
+def contextSensitiveCheck(eqObj, node1, lang):
+	return eqObj.context == createContext(node1, lang)

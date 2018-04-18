@@ -2,13 +2,13 @@ import json
 import anytree
 import sys
 import utils
-import context
 import match
 import refMaps
 
 printAdlDetail = False
 printAdlStr = False
 
+lang = ""
 matched1 = 0
 matched2 = 0
 adlStr1 = 0
@@ -28,7 +28,7 @@ def getColor(node):
 	for tag in node["tags"]:
 		if tag.lower() in refMaps.adlDetailMap:
 			for cntxt in refMaps.adlDetailMap[tag.lower()]:
-				if cntxt == utils.createContext(node): 
+				if cntxt == utils.createContext(node,lang): 
 					if printAdlDetail: print(node["tags"], "is an additional detail")
 					return refMaps.adlDetailColor
 
@@ -142,7 +142,7 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 	'''
 
 	for node2 in t2Nodes:
-		if utils.additionalStructure(node2):
+		if utils.additionalStructure(node2,lang):
 			if "match" in node2 and not node2["match"] == None: utils.unMatchNode(node2["match"].node)
 			node2["matched"] = True
 			node2["match"] = None
@@ -156,7 +156,7 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 
 	'''
 	for node in t1Nodes:	
-		if utils.additionalStructure(node):
+		if utils.additionalStructure(node,lang):
 			node["matched"] = True
 			node["match"] = None
 			node["adlStr"] = True
@@ -164,7 +164,7 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 			if printAdlStr: print(node["tags"], "is an additional strucutre")
 
 		else:
-			potentialMatches = utils.getAllPotentialMatches(node, t2Nodes)
+			potentialMatches = utils.getAllPotentialMatches(node, t2Nodes, lang)
 			bestMatch = getBestMatch(potentialMatches) 
 			if not node["matched"] and not bestMatch == None:
 				utils.matchNodes(node, bestMatch.node, bestMatch.confidence)
@@ -188,22 +188,25 @@ def checkChildren(t1Nodes, t2Nodes, parent1, parent2):
 
 	
 def runner():
+	global lang
+
 	if len(sys.argv) < 3:
 		print("error: must specify two files")
 		exit()
 
 	with open(sys.argv[1], 'r') as f:
-			jsonObj1 = json.load(f)
+		jsonObj1 = json.load(f)
 
 	with open(sys.argv[2], 'r') as f:
 		jsonObj2 = json.load(f)
 
 
 	reportf = open(sys.argv[3], 'a')
+	lang = sys.argv[4]
 
 	if not utils.hasTags(jsonObj1) or not utils.hasTags(jsonObj2):
 		print("error: illformatted json doesn't have tags")
-	elif not utils.tagsMatch(jsonObj1, jsonObj2, None, None):
+	elif not utils.tagsMatch(jsonObj1, jsonObj2, None, None, lang):
 		print("error: root nodes don't match")
 	else:
 		utils.editChildren(jsonObj1)
@@ -237,10 +240,14 @@ def runner():
 		totalNodes1 = matched1 + unmatched1 + adlStr1 + adlDetail1
 		totalNodes2 = matched2 + unmatched2 + adlStr2 + adlDetail2
 
-		reportf.write("\n\n\nfile: " + sys.argv[1][0:index1] + "\n\ttotal nodes:" + str(totalNodes1) + "\n\tnum unmatched nodes: " 
+		reportf.write("\n\n\nfile: " + sys.argv[1][0:index1] 
+				+ "\n\tpercent unmatched: " + str(round(float(unmatched1/totalNodes1)*100, 2))
+				+ "\n\ttotal nodes:" + str(totalNodes1) + "\n\tnum unmatched nodes: " 
 				+ str(unmatched1) + "\n\tnum matched nodes: " + str(matched1) + "\n\tadl struct nodes: " + str(adlStr1)
 				+ "\n\tadl detail nodes: " + str(adlDetail1) + "\n\n"
-				+ "file: " + sys.argv[2][0:index2] + "\n\ttotal nodes:" + str(totalNodes2) + "\n\tnum unmatched nodes: " 
+				+ "file: " + sys.argv[2][0:index2] + 
+				"\n\tpercent unmatched: " + str(round(float(unmatched2/totalNodes2)*100, 2))
+				+ "\n\ttotal nodes:" + str(totalNodes2) + "\n\tnum unmatched nodes: " 
 				+ str(unmatched2) + "\n\tnum matched nodes: " + str(matched2) + "\n\tadl struct nodes: " + str(adlStr2)
 				+ "\n\tadl detail nodes: " + str(adlDetail2) + "\n")
 runner()
